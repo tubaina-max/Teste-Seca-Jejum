@@ -99,7 +99,7 @@ export default function ResultsPage() {
 
     // 🎯 TRACKING UNIFICADO - InitiateCheckout com retry
     const trackCheckout = (attempt = 1) => {
-      console.log(`�� Tentativa ${attempt} de InitiateCheckout...`);
+      console.log(`🔄 Tentativa ${attempt} de InitiateCheckout...`);
       
       if (typeof window !== "undefined" && window.trackEvent) {
         window.trackEvent('InitiateCheckout', {
@@ -144,7 +144,7 @@ export default function ResultsPage() {
     <div className="min-h-screen bg-white">
       {/* Header Mobile First */}
       <div className="bg-gradient-to-r from-green-600 to-green-700 shadow-lg">
-        <div className="w-full px-3 py-3 flex items-center justify-center">
+        <div className="w-full max-w-md mx-auto px-3 py-3 flex items-center justify-center">
           <Flame className="w-6 h-6 text-yellow-300 mr-2 animate-pulse" />
           <span className="text-lg font-bold text-white">Plano A - Seca Jejum</span>
           <div className="ml-2 bg-yellow-400 text-gray-800 px-2 py-1 rounded-full text-xs font-bold">
@@ -153,7 +153,7 @@ export default function ResultsPage() {
         </div>
       </div>
 
-      <div className="w-full px-3 py-4">
+      <div className="w-full max-w-md mx-auto px-3 py-4">
         {/* Título Principal Mobile */}
         <div className="text-center mb-6">
           <div className="bg-red-500 text-white px-3 py-2 rounded-full inline-block mb-3 text-xs font-bold">
@@ -299,15 +299,15 @@ export default function ResultsPage() {
             <div className="grid grid-cols-3 gap-2 mt-3 text-xs text-gray-600">
               <div className="flex flex-col items-center">
                 <ShieldCheck className="w-4 h-4 mb-1 text-green-500" />
-                <span>Compra SEGURA</span>
+                <span className="text-center">Compra SEGURA</span>
               </div>
               <div className="flex flex-col items-center">
                 <Star className="w-4 h-4 mb-1 text-green-500" />
-                <span>Garantia 30 DIAS</span>
+                <span className="text-center">Garantia 30 DIAS</span>
               </div>
               <div className="flex flex-col items-center">
                 <Lock className="w-4 h-4 mb-1 text-green-500" />
-                <span>Dados PROTEGIDOS</span>
+                <span className="text-center">Dados PROTEGIDOS</span>
               </div>
             </div>
           </CardContent>
@@ -496,15 +496,15 @@ export default function ResultsPage() {
             <div className="grid grid-cols-3 gap-2 mt-3 text-xs text-gray-600">
               <div className="flex flex-col items-center">
                 <ShieldCheck className="w-4 h-4 mb-1 text-green-500" />
-                <span>Compra SEGURA</span>
+                <span className="text-center">Compra SEGURA</span>
               </div>
               <div className="flex flex-col items-center">
                 <Star className="w-4 h-4 mb-1 text-green-500" />
-                <span>Garantia 30 DIAS</span>
+                <span className="text-center">Garantia 30 DIAS</span>
               </div>
               <div className="flex flex-col items-center">
                 <Lock className="w-4 h-4 mb-1 text-green-500" />
-                <span>Dados PROTEGIDOS</span>
+                <span className="text-center">Dados PROTEGIDOS</span>
               </div>
             </div>
           </CardContent>
@@ -525,7 +525,7 @@ export default function ResultsPage() {
             <strong>Sem perguntas, sem burocracia.</strong>
           </p>
           <p className="text-blue-600 text-xs font-semibold">
-            📧 Suporte: <a href="mailto:secaplanoa@gmail.com" className="underline" >
+            📧 Suporte: <a href="mailto:secaplanoa@gmail.com" className="underline break-all">
               secaplanoa@gmail.com
             </a>
           </p>
@@ -560,7 +560,7 @@ export default function ResultsPage() {
                 name: "Luciana Ferreira",
                 avatar: "https://optimalhealthscout.shop/wp-content/uploads/2025/06/4-DEPOIMENTO.png",
                 rating: 5,
-                text: "Melhor investimento que já fiz! R\$ 23 que mudaram minha vida. 5kg a menos e muito mais disposição! ⚡",
+                text: "Melhor investimento que já fiz! R\$ 19,90 que mudaram minha vida. 5kg a menos e muito mais disposição! ⚡",
                 days: "há 6 dias"
               }
             ].map((testimonial, index) => (
@@ -593,12 +593,14 @@ export default function ResultsPage() {
           <p className="text-xs mb-3 opacity-90">
             Junte-se às mais de 15.000 mulheres que já transformaram seus corpos com o Plano A
           </p>
-          <Button
-            className="w-full bg-yellow-500 hover:bg-yellow-600 text-gray-800 py-3 px-2 rounded-xl font-bold text-sm shadow-xl transform hover:scale-105 transition-all duration-200 leading-tight"
-            onClick={handleReceivePlan}
-          >
-            🔥 COMEÇAR MINHA TRANSFORMAÇÃO AGORA!
-          </Button>
+          <div className="w-full">
+            <Button
+              className="w-full bg-yellow-500 hover:bg-yellow-600 text-gray-800 py-3 px-2 rounded-xl font-bold text-sm shadow-xl transform hover:scale-105 transition-all duration-200 leading-tight break-words"
+              onClick={handleReceivePlan}
+            >
+              🔥 COMEÇAR MINHA TRANSFORMAÇÃO AGORA!
+            </Button>
+          </div>
         </div>
       </div>
     </div>
