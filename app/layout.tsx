@@ -25,31 +25,70 @@ export default function RootLayout({
             console.log("🔄 Carregando UTMify...");
             window.pixelId = "688bd76d39249d6f834ff133";
             
-            // Função global de tracking
-            window.trackEvent = function(eventName, eventData = {}) {
-              console.log("🎯 Evento:", eventName, eventData);
-              
-              // UTMify
-              if (window.utmify) {
-                try {
-                  window.utmify.track(eventName, eventData);
-                  console.log("✅ UTMify OK:", eventName);
-                } catch (error) {
-                  console.error("❌ UTMify erro:", error);
-                }
-              }
-              
-              // Google Analytics
-              if (window.gtag) {
-                try {
-                  const gaEvent = eventName.toLowerCase().replace(/([A-Z])/g, '_$1');
-                  window.gtag('event', gaEvent, eventData);
-                  console.log("✅ GA OK:", gaEvent);
-                } catch (error) {
-                  console.error("❌ GA erro:", error);
-                }
-              }
-            };
+            // 🚀 FUNÇÃO GLOBAL DE TRACKING UNIFICADO - VERSÃO FACEBOOK OTIMIZADA
+window.trackEvent = function(eventName, eventData = {}) {
+  console.log("🎯 Disparando evento:", eventName, eventData);
+  
+  // 1. UTMify tracking (seu pixel principal)
+  if (window.utmify) {
+    try {
+      window.utmify.track(eventName, eventData);
+      console.log("✅ UTMify " + eventName + " disparado:", eventData);
+    } catch (error) {
+      console.error("❌ Erro UTMify " + eventName + ":", error);
+    }
+  } else {
+    console.log("⏳ UTMify ainda não carregado para " + eventName);
+    // Tentar novamente em 1 segundo
+    setTimeout(() => {
+      if (window.utmify) {
+        window.utmify.track(eventName, eventData);
+        console.log("✅ UTMify " + eventName + " disparado (retry):", eventData);
+      }
+    }, 1000);
+  }
+  
+  // 2. Google Analytics tracking
+  if (window.gtag) {
+    try {
+      // Converter eventName para snake_case para GA
+      const gaEventName = eventName.toLowerCase().replace(/([A-Z])/g, '_$1');
+      window.gtag('event', gaEventName, eventData);
+      console.log("✅ GA " + gaEventName + " disparado:", eventData);
+    } catch (error) {
+      console.error("❌ Erro GA:", error);
+    }
+  }
+  
+  // 3. Facebook Pixel tracking (se disponível)
+  if (window.fbq) {
+    try {
+      // Mapear eventos para Facebook
+      const fbEventName = eventName === 'ViewContent' ? 'ViewContent' :
+                         eventName === 'InitiateCheckout' ? 'InitiateCheckout' :
+                         eventName === 'Purchase' ? 'Purchase' : 'CustomEvent';
+      
+      window.fbq('track', fbEventName, eventData);
+      console.log("✅ Facebook " + fbEventName + " disparado:", eventData);
+    } catch (error) {
+      console.error("❌ Erro Facebook:", error);
+    }
+  }
+  
+  // 4. DataLayer para GTM (se disponível)
+  if (window.dataLayer) {
+    try {
+      window.dataLayer.push({
+        event: eventName,
+        eventData: eventData,
+        timestamp: new Date().toISOString()
+      });
+      console.log("✅ DataLayer " + eventName + " disparado:", eventData);
+    } catch (error) {
+      console.error("❌ Erro DataLayer:", error);
+    }
+  }
+};
             
             // Carregar UTMify
             var script = document.createElement("script");
