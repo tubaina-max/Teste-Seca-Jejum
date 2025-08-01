@@ -6,8 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { ArrowLeft, Flame, Sparkles, TrendingUp, Heart, Brain } from "lucide-react"
 import type { QuizData, QuizOption } from "@/types/quiz"
 import { quizSteps } from "@/data/quiz-steps"
-import Script from "next/script"
-import { useRouter } from "next/navigation" // ✅ Adicionado
+import { useRouter } from "next/navigation"
 
 export default function QuizPage() {
   const [currentStep, setCurrentStep] = useState(0)
@@ -19,7 +18,7 @@ export default function QuizPage() {
   const [selectedMultiple, setSelectedMultiple] = useState<string[]>([])
   const [showFinalLoading, setShowFinalLoading] = useState(false)
   
-  const router = useRouter() // ✅ Adicionado
+  const router = useRouter()
 
   // ✅ Função para preservar UTMs na navegação
   const navigateWithUTMs = (path: string) => {
@@ -49,7 +48,7 @@ export default function QuizPage() {
     router.push(finalUrl)
   }
 
-  // Initialize slider value when step changes
+  // ✅ USEEFFECT OTIMIZADO - SEM SCRIPTS DUPLICADOS
   useEffect(() => {
     const currentQuizStep = quizSteps[currentStep]
     if (currentQuizStep.type === "slider" && currentQuizStep.defaultValue) {
@@ -59,13 +58,18 @@ export default function QuizPage() {
       setInputValue("")
     }
 
-    // Google Analytics event for quiz step view
-    if (typeof window !== "undefined" && (window as any).gtag) {
-      ;(window as any).gtag("event", "quiz_step_view", {
+    // 🎯 TRACKING UNIFICADO - Quiz Step View
+    if (typeof window !== "undefined" && window.trackEvent) {
+      window.trackEvent('ViewContent', {
+        content_name: `Quiz Step: ${currentQuizStep.question}`,
+        content_category: 'quiz_step',
         step_id: currentQuizStep.id,
         step_number: currentStep + 1,
         question: currentQuizStep.question,
-      })
+        value: 0,
+        currency: 'BRL'
+      });
+      console.log(`✅ Quiz Step ${currentStep + 1} - ViewContent disparado`);
     }
   }, [currentStep])
 
@@ -80,17 +84,23 @@ export default function QuizPage() {
   const currentQuizStep = quizSteps[currentStep]
   const progress = ((currentStep + 1) / quizSteps.length) * 100
 
+  // ✅ FUNÇÃO OTIMIZADA - handleAnswer
   const handleAnswer = (questionId: string, answer: any) => {
     setAnswers((prev) => ({ ...prev, [questionId]: answer }))
 
-    // Google Analytics event for quiz answer
-    if (typeof window !== "undefined" && (window as any).gtag) {
-      ;(window as any).gtag("event", "quiz_answer_submitted", {
+    // 🎯 TRACKING UNIFICADO - Quiz Answer
+    if (typeof window !== "undefined" && window.trackEvent) {
+      window.trackEvent('ViewContent', {
+        content_name: `Quiz Answer: ${currentQuizStep.question}`,
+        content_category: 'quiz_answer',
         step_id: questionId,
         step_number: currentStep + 1,
         question: currentQuizStep.question,
         answer: JSON.stringify(answer),
-      })
+        value: 0,
+        currency: 'BRL'
+      });
+      console.log(`✅ Quiz Answer ${currentStep + 1} - ViewContent disparado:`, answer);
     }
 
     if (currentQuizStep.insight) {
@@ -119,13 +129,23 @@ export default function QuizPage() {
       setCurrentStep((prev) => prev + 1)
       setSelectedMultiple([])
     } else {
-      // ✅ CORREÇÃO PRINCIPAL: Preservar UTMs na navegação final
+      // ✅ QUIZ COMPLETO - Disparar evento e navegar
       setShowFinalLoading(true)
-      if (typeof window !== "undefined" && (window as any).gtag) {
-        ;(window as any).gtag("event", "quiz_final_loading_started")
+      
+      // 🎯 TRACKING - Quiz Completed
+      if (typeof window !== "undefined" && window.trackEvent) {
+        window.trackEvent('ViewContent', {
+          content_name: 'Quiz Completed',
+          content_category: 'quiz_completion',
+          total_steps: quizSteps.length,
+          value: 19.90,
+          currency: 'BRL'
+        });
+        console.log("✅ Quiz Completed - ViewContent disparado");
       }
+      
       setTimeout(() => {
-        navigateWithUTMs("/results") // ✅ Usando função que preserva UTMs
+        navigateWithUTMs("/results")
       }, 3000)
     }
   }
@@ -189,296 +209,262 @@ export default function QuizPage() {
   }
 
   return (
-    <>
-      {/* Pixel Script */}
-      <Script id="utmify-pixel-script" strategy="afterInteractive">
-        {`
-          window.pixelId = "688bd76d39249d6f834ff133";
-          var a = document.createElement("script");
-          a.setAttribute("async", "");
-          a.setAttribute("defer", "");
-          a.setAttribute("src", "https://cdn.utmify.com.br/scripts/pixel/pixel.js");
-          document.head.appendChild(a);
-        `}
-      </Script>
-
-      {/* UTMify Tracking Script */}
-      <Script
-        src="https://cdn.utmify.com.br/scripts/utms/latest.js"
-        data-utmify-prevent-xcod-sck
-        data-utmify-prevent-subids
-        async
-        defer
-      />
-
-      {/* Google Analytics */}
-      <Script async src="https://www.googletagmanager.com/gtag/js?id=G-GVND5XYZ4T" />
-      <Script id="google-analytics-config" strategy="afterInteractive">
-        {`
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){dataLayer.push(arguments);}
-          gtag('js', new Date());
-          gtag('config', 'G-GVND5XYZ4T');
-        `}
-      </Script>
-
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
-        {/* Header */}
-        <div className="bg-white shadow-sm border-b">
-          <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
-            <button onClick={prevStep} className="p-2 hover:bg-gray-100 rounded-full">
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
-            </button>
-            <div className="flex items-center">
-              <Flame className="w-6 h-6 text-orange-500 mr-2" />
-              <span className="text-xl font-bold text-gray-800">Plano A - Seca Jejum</span>
-            </div>
-            <div className="w-9"></div>
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
+          <button onClick={prevStep} className="p-2 hover:bg-gray-100 rounded-full">
+            <ArrowLeft className="w-5 h-5 text-gray-600" />
+          </button>
+          <div className="flex items-center">
+            <Flame className="w-6 h-6 text-orange-500 mr-2" />
+            <span className="text-xl font-bold text-gray-800">Plano A - Seca Jejum</span>
           </div>
-        </div>
-
-        <div className="max-w-md mx-auto px-4 py-6">
-          {/* Progress bar */}
-          <div className="mb-6">
-            <div className="w-full bg-gray-200 rounded-full h-3">
-              <div
-                className="bg-gradient-to-r from-green-500 to-green-600 h-3 rounded-full transition-all duration-500 ease-out"
-                style={{ width: `${progress}%` }}
-              ></div>
-            </div>
-            <div className="flex justify-between items-center mt-2">
-              <span className="text-sm text-gray-600">
-                Etapa {currentStep + 1} de {quizSteps.length}
-              </span>
-              <div className="flex items-center text-sm text-green-600">
-                <Sparkles className="w-4 h-4 mr-1" />
-                <span>Análise gratuita</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Live users indicator */}
-          <div className="text-center mb-6">
-            <div className="inline-flex items-center bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
-              <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
-              <span>{liveUsers} pessoas fazendo agora</span>
-            </div>
-          </div>
-
-          {/* Question */}
-          <div className="mb-8">
-            <h2 className="text-xl font-bold text-gray-800 mb-6 text-center leading-tight">
-              {currentQuizStep.question}
-            </h2>
-
-            {/* Social Proof */}
-            {currentQuizStep.socialProof && (
-              <div className="bg-white rounded-lg p-4 shadow-sm border mb-6">
-                <div className="text-center">
-                  {currentQuizStep.socialProof.mainImage && (
-                    <img
-                      src={currentQuizStep.socialProof.mainImage || "/placeholder.svg"}
-                      alt="Prova social principal"
-                      className="w-full h-auto object-contain rounded-lg mb-3"
-                    />
-                  )}
-                  <p className="text-sm text-gray-700 italic mt-2">{currentQuizStep.socialProof.text}</p>
-                  {currentQuizStep.socialProof.secondaryImages &&
-                    currentQuizStep.socialProof.secondaryImages.map((imgSrc, idx) => (
-                      <div
-                        key={idx}
-                        className="relative w-full mt-4"
-                        style={{ paddingTop: "56.25%" }}
-                      >
-                        <img
-                          src={imgSrc || "/placeholder.svg"}
-                          alt={`Prova social secundária ${idx + 1}`}
-                          className="absolute inset-0 w-full h-full object-contain rounded-lg"
-                        />
-                      </div>
-                    ))}
-                </div>
-              </div>
-            )}
-
-            {/* Render different question types */}
-            {currentQuizStep.type === "single-choice" && (
-              <div className="space-y-3">
-                {currentQuizStep.options?.map((option, index) => (
-                  <Card
-                    key={index}
-                    className="cursor-pointer hover:shadow-lg transition-all duration-300 hover:scale-[1.02] border-2 hover:border-green-400"
-                    onClick={() => handleAnswer(currentQuizStep.id, option.value)}
-                  >
-                    <CardContent className="p-4 flex items-center space-x-4">
-                      {option.image && (
-                        <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                          <img
-                            src={option.image || "/placeholder.svg"}
-                            alt={option.label}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      )}
-                      {option.emoji && <div className="text-2xl flex-shrink-0">{option.emoji}</div>}
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-800">{option.label}</p>
-                        {option.description && <p className="text-sm text-gray-600 mt-1">{option.description}</p>}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-
-            {currentQuizStep.type === "multiple-choice" && (
-              <div className="space-y-6">
-                {Object.entries(
-                  currentQuizStep.options?.reduce(
-                    (acc, option) => {
-                      const category = option.category || "Outros"
-                      if (!acc[category]) {
-                        acc[category] = { emoji: option.categoryEmoji, options: [] }
-                      }
-                      acc[category].options.push(option)
-                      return acc
-                    },
-                    {} as Record<string, { emoji?: string; options: QuizOption[] }>,
-                  ) || {},
-                ).map(([categoryName, categoryData]) => (
-                  <div key={categoryName}>
-                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
-                      {categoryData.emoji && <span className="mr-2">{categoryData.emoji}</span>}
-                      {categoryName}
-                    </h3>
-                    <div
-                      className={`grid gap-3 ${
-                        currentQuizStep.id === "bad-habits" || currentQuizStep.id === "weight-gain-events"
-                          ? "grid-cols-1"
-                          : "grid-cols-2"
-                      }`}
-                    >
-                      {categoryData.options.map((option, index) => (
-                        <Button
-                          key={index}
-                          variant="outline"
-                          className={`h-auto py-4 px-3 text-base font-medium rounded-lg border-2 transition-all duration-300 text-wrap ${
-                            selectedMultiple.includes(option.value)
-                              ? "border-green-400 bg-green-50 text-green-800"
-                              : "border-gray-200 hover:border-green-400 hover:bg-green-50"
-                          }`}
-                          onClick={() => handleMultipleChoice(option.value)}
-                        >
-                          <div className="flex flex-col items-center justify-center text-center w-full">
-                            {option.image && (
-                              <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 mb-2">
-                                <img
-                                  src={option.image || "/placeholder.svg"}
-                                  alt={option.label}
-                                  className="w-full h-full object-cover"
-                                />
-                              </div>
-                            )}
-                            {option.emoji && <div className="text-2xl mb-2">{option.emoji}</div>}
-                            <span className="text-sm font-medium text-gray-800">{option.label}</span>
-                          </div>
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-                <Button
-                  className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold"
-                  onClick={() => handleAnswer(currentQuizStep.id, selectedMultiple)}
-                  disabled={selectedMultiple.length === 0}
-                >
-                  Continuar
-                </Button>
-              </div>
-            )}
-
-            {currentQuizStep.type === "slider" && (
-              <div className="space-y-6">
-                <div className="text-center">
-                  <div className="text-4xl font-bold text-gray-800 mb-2">
-                    {sliderValue}
-                    <span className="text-lg text-gray-500 ml-1">{currentQuizStep.unit}</span>
-                  </div>
-                  <div className="relative">
-                    <input
-                      type="range"
-                      min={currentQuizStep.min}
-                      max={currentQuizStep.max}
-                      value={sliderValue}
-                      onChange={(e) => setSliderValue(Number(e.target.value))}
-                      className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                    />
-                  </div>
-                  <p className="text-sm text-gray-500 mt-2">{currentQuizStep.sliderLabel}</p>
-                </div>
-                <Button
-                  className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold"
-                  onClick={() => handleAnswer(currentQuizStep.id, sliderValue)}
-                >
-                  Continuar
-                </Button>
-              </div>
-            )}
-
-            {currentQuizStep.type === "input" && (
-              <div className="space-y-6">
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder={currentQuizStep.placeholder}
-                    className="w-full p-4 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none text-center text-lg"
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                  />
-                </div>
-                <Button
-                  className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold"
-                  onClick={() => handleAnswer(currentQuizStep.id, inputValue)}
-                  disabled={!inputValue.trim()}
-                >
-                  Enviar
-                </Button>
-              </div>
-            )}
-          </div>
-
-          {/* Value reinforcement */}
-          {currentStep % 5 === 0 && currentStep > 0 && (
-            <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg p-4 text-center mb-6">
-              <TrendingUp className="w-5 h-5 mx-auto mb-2" />
-              <p className="text-sm font-medium">
-                🎯 Sua análise está ficando mais precisa!
-                <br />
-                <span className="text-blue-100">
-                  Dados coletados: {currentStep + 1}/{quizSteps.length}
-                </span>
-              </p>
-            </div>
-          )}
-
-          {/* Social proof testimonial */}
-          {currentStep === Math.floor(quizSteps.length / 2) && (
-            <div className="bg-white rounded-lg p-4 shadow-sm border mb-6">
-              <div className="flex items-start space-x-3">
-                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Heart className="w-5 h-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-700 italic">
-                    "Este teste mudou minha vida! Finalmente entendi meu corpo."
-                  </p>
-                  <p className="text-xs text-gray-500 mt-1">- Maria, 34 anos</p>
-                </div>
-              </div>
-            </div>
-          )}
+          <div className="w-9"></div>
         </div>
       </div>
-    </>
+
+      <div className="max-w-md mx-auto px-4 py-6">
+        {/* Progress bar */}
+        <div className="mb-6">
+          <div className="w-full bg-gray-200 rounded-full h-3">
+            <div
+              className="bg-gradient-to-r from-green-500 to-green-600 h-3 rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${progress}%` }}
+            ></div>
+          </div>
+          <div className="flex justify-between items-center mt-2">
+            <span className="text-sm text-gray-600">
+              Etapa {currentStep + 1} de {quizSteps.length}
+            </span>
+            <div className="flex items-center text-sm text-green-600">
+              <Sparkles className="w-4 h-4 mr-1" />
+              <span>Análise gratuita</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Live users indicator */}
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
+            <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>
+            <span>{liveUsers} pessoas fazendo agora</span>
+          </div>
+        </div>
+
+        {/* Question */}
+        <div className="mb-8">
+          <h2 className="text-xl font-bold text-gray-800 mb-6 text-center leading-tight">
+            {currentQuizStep.question}
+          </h2>
+
+          {/* Social Proof */}
+          {currentQuizStep.socialProof && (
+            <div className="bg-white rounded-lg p-4 shadow-sm border mb-6">
+              <div className="text-center">
+                {currentQuizStep.socialProof.mainImage && (
+                  <img
+                    src={currentQuizStep.socialProof.mainImage || "/placeholder.svg"}
+                    alt="Prova social principal"
+                    className="w-full h-auto object-contain rounded-lg mb-3"
+                  />
+                )}
+                <p className="text-sm text-gray-700 italic mt-2">{currentQuizStep.socialProof.text}</p>
+                {currentQuizStep.socialProof.secondaryImages &&
+                  currentQuizStep.socialProof.secondaryImages.map((imgSrc, idx) => (
+                    <div
+                      key={idx}
+                      className="relative w-full mt-4"
+                      style={{ paddingTop: "56.25%" }}
+                    >
+                      <img
+                        src={imgSrc || "/placeholder.svg"}
+                        alt={`Prova social secundária ${idx + 1}`}
+                        className="absolute inset-0 w-full h-full object-contain rounded-lg"
+                      />
+                    </div>
+                  ))}
+              </div>
+            </div>
+          )}
+
+          {/* Render different question types */}
+          {currentQuizStep.type === "single-choice" && (
+            <div className="space-y-3">
+              {currentQuizStep.options?.map((option, index) => (
+                <Card
+                  key={index}
+                  className="cursor-pointer hover:shadow-lg transition-all duration-300 hover:scale-[1.02] border-2 hover:border-green-400"
+                  onClick={() => handleAnswer(currentQuizStep.id, option.value)}
+                >
+                  <CardContent className="p-4 flex items-center space-x-4">
+                    {option.image && (
+                      <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                        <img
+                          src={option.image || "/placeholder.svg"}
+                          alt={option.label}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    {option.emoji && <div className="text-2xl flex-shrink-0">{option.emoji}</div>}
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-800">{option.label}</p>
+                      {option.description && <p className="text-sm text-gray-600 mt-1">{option.description}</p>}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+
+          {currentQuizStep.type === "multiple-choice" && (
+            <div className="space-y-6">
+              {Object.entries(
+                currentQuizStep.options?.reduce(
+                  (acc, option) => {
+                    const category = option.category || "Outros"
+                    if (!acc[category]) {
+                      acc[category] = { emoji: option.categoryEmoji, options: [] }
+                    }
+                    acc[category].options.push(option)
+                    return acc
+                  },
+                  {} as Record<string, { emoji?: string; options: QuizOption[] }>,
+                ) || {},
+              ).map(([categoryName, categoryData]) => (
+                <div key={categoryName}>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+                    {categoryData.emoji && <span className="mr-2">{categoryData.emoji}</span>}
+                    {categoryName}
+                  </h3>
+                  <div
+                    className={`grid gap-3 ${
+                      currentQuizStep.id === "bad-habits" || currentQuizStep.id === "weight-gain-events"
+                        ? "grid-cols-1"
+                        : "grid-cols-2"
+                    }`}
+                  >
+                    {categoryData.options.map((option, index) => (
+                      <Button
+                        key={index}
+                        variant="outline"
+                        className={`h-auto py-4 px-3 text-base font-medium rounded-lg border-2 transition-all duration-300 text-wrap ${
+                          selectedMultiple.includes(option.value)
+                            ? "border-green-400 bg-green-50 text-green-800"
+                            : "border-gray-200 hover:border-green-400 hover:bg-green-50"
+                        }`}
+                        onClick={() => handleMultipleChoice(option.value)}
+                      >
+                        <div className="flex flex-col items-center justify-center text-center w-full">
+                          {option.image && (
+                            <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 mb-2">
+                              <img
+                                src={option.image || "/placeholder.svg"}
+                                alt={option.label}
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          )}
+                          {option.emoji && <div className="text-2xl mb-2">{option.emoji}</div>}
+                          <span className="text-sm font-medium text-gray-800">{option.label}</span>
+                        </div>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+              <Button
+                className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold"
+                onClick={() => handleAnswer(currentQuizStep.id, selectedMultiple)}
+                disabled={selectedMultiple.length === 0}
+              >
+                Continuar
+              </Button>
+            </div>
+          )}
+
+          {currentQuizStep.type === "slider" && (
+            <div className="space-y-6">
+              <div className="text-center">
+                <div className="text-4xl font-bold text-gray-800 mb-2">
+                  {sliderValue}
+                  <span className="text-lg text-gray-500 ml-1">{currentQuizStep.unit}</span>
+                </div>
+                <div className="relative">
+                  <input
+                    type="range"
+                    min={currentQuizStep.min}
+                    max={currentQuizStep.max}
+                    value={sliderValue}
+                    onChange={(e) => setSliderValue(Number(e.target.value))}
+                    className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                  />
+                </div>
+                <p className="text-sm text-gray-500 mt-2">{currentQuizStep.sliderLabel}</p>
+              </div>
+              <Button
+                className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold"
+                onClick={() => handleAnswer(currentQuizStep.id, sliderValue)}
+              >
+                Continuar
+              </Button>
+            </div>
+          )}
+
+          {currentQuizStep.type === "input" && (
+            <div className="space-y-6">
+              <div className="relative">
+                <input
+                  type="text"
+                  placeholder={currentQuizStep.placeholder}
+                  className="w-full p-4 border-2 border-gray-200 rounded-lg focus:border-green-500 focus:outline-none text-center text-lg"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                />
+              </div>
+              <Button
+                className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg font-semibold"
+                onClick={() => handleAnswer(currentQuizStep.id, inputValue)}
+                disabled={!inputValue.trim()}
+              >
+                Enviar
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Value reinforcement */}
+        {currentStep % 5 === 0 && currentStep > 0 && (
+          <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-lg p-4 text-center mb-6">
+            <TrendingUp className="w-5 h-5 mx-auto mb-2" />
+            <p className="text-sm font-medium">
+              🎯 Sua análise está ficando mais precisa!
+              <br />
+              <span className="text-blue-100">
+                Dados coletados: {currentStep + 1}/{quizSteps.length}
+              </span>
+            </p>
+          </div>
+        )}
+
+        {/* Social proof testimonial */}
+        {currentStep === Math.floor(quizSteps.length / 2) && (
+          <div className="bg-white rounded-lg p-4 shadow-sm border mb-6">
+            <div className="flex items-start space-x-3">
+              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <Heart className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-700 italic">
+                  "Este teste mudou minha vida! Finalmente entendi meu corpo."
+                </p>
+                <p className="text-xs text-gray-500 mt-1">- Maria, 34 anos</p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
