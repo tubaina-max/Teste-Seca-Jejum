@@ -93,52 +93,82 @@ export default function ResultsPage() {
 
   }, [])
 
-  // ✅ FUNÇÃO OTIMIZADA - InitiateCheckout no clique do botão
-  const handleReceivePlan = () => {
-    console.log("🛒 Botão clicado - Preparando InitiateCheckout...");
+// ✅ FUNÇÃO CORRIGIDA - InitiateCheckout com parâmetros corretos para Facebook
+const handleReceivePlan = () => {
+  console.log("🛒 Botão clicado - Preparando InitiateCheckout...");
 
-    // 🎯 TRACKING UNIFICADO - InitiateCheckout com retry
-    const trackCheckout = (attempt = 1) => {
-      console.log(`🔄 Tentativa ${attempt} de InitiateCheckout...`);
+  // 🎯 TRACKING UNIFICADO - InitiateCheckout com parâmetros Facebook/Meta
+  const trackCheckout = (attempt = 1) => {
+    console.log(`🔄 Tentativa ${attempt} de InitiateCheckout...`);
+    
+    if (typeof window !== "undefined" && window.trackEvent) {
+      // Parâmetros otimizados para Facebook/Meta Ads
+      const checkoutData = {
+        content_name: 'Plano A - Seca Jejum',
+        content_category: 'digital_product',
+        content_type: 'product',
+        content_ids: ['plano-a-seca-jejum'],
+        contents: [{
+          id: 'plano-a-seca-jejum',
+          quantity: 1,
+          item_price: 19.90
+        }],
+        value: 19.90,
+        currency: 'BRL',
+        num_items: 1,
+        // Parâmetros adicionais para Facebook
+        predicted_ltv: 19.90,
+        event_source_url: window.location.href,
+        opt_out: false
+      };
+
+      window.trackEvent('InitiateCheckout', checkoutData);
+      console.log("✅ InitiateCheckout disparado com parâmetros Facebook:", checkoutData);
       
-      if (typeof window !== "undefined" && window.trackEvent) {
-        window.trackEvent('InitiateCheckout', {
-          content_name: 'Plano A - Seca Jejum',
-          content_category: 'digital_product',
-          value: 19.90,
-          currency: 'BRL',
-          content_ids: ['plano-a-seca-jejum'],
-          num_items: 1,
-          content_type: 'product'
-        });
-        console.log("✅ InitiateCheckout disparado com sucesso!");
-        return true;
-      } else {
-        console.log(`⏳ Tentativa ${attempt} - trackEvent não disponível`);
-        
-        // Verificar scripts individualmente
-        console.log("UTMify:", !!window.utmify);
-        console.log("trackEvent:", !!window.trackEvent);
-        
-        if (attempt < 3) {
-          setTimeout(() => trackCheckout(attempt + 1), 500);
-        } else {
-          console.log("⚠️ Prosseguindo sem tracking após 3 tentativas");
+      // TAMBÉM disparar como Purchase para garantir
+      setTimeout(() => {
+        if (window.trackEvent) {
+          window.trackEvent('Purchase', {
+            content_name: 'Plano A - Seca Jejum',
+            content_category: 'digital_product',
+            content_type: 'product',
+            content_ids: ['plano-a-seca-jejum'],
+            value: 19.90,
+            currency: 'BRL',
+            transaction_id: 'quiz_' + Date.now(),
+            event_source_url: window.location.href
+          });
+          console.log("✅ Purchase BACKUP também disparado");
         }
-        return false;
+      }, 1000);
+      
+      return true;
+    } else {
+      console.log(`⏳ Tentativa ${attempt} - trackEvent não disponível`);
+      
+      // Verificar scripts individualmente
+      console.log("UTMify:", !!window.utmify);
+      console.log("trackEvent:", !!window.trackEvent);
+      
+      if (attempt < 3) {
+        setTimeout(() => trackCheckout(attempt + 1), 500);
+      } else {
+        console.log("⚠️ Prosseguindo sem tracking após 3 tentativas");
       }
-    };
+      return false;
+    }
+  };
 
-    // Tentar tracking
-    trackCheckout(1);
+  // Tentar tracking
+  trackCheckout(1);
 
-    // ✅ REDIRECIONAMENTO (independente do tracking)
-    console.log("⏳ Aguardando 2s para redirecionamento...");
-    setTimeout(() => {
-      console.log("🚀 Redirecionando para checkout...");
-      navigateToCheckoutWithUTMs("https://pay.cakto.com.br/37iud5r_506380");
-    }, 2000);
-  }
+  // ✅ REDIRECIONAMENTO (independente do tracking)
+  console.log("⏳ Aguardando 3s para redirecionamento (tempo extra para tracking)...");
+  setTimeout(() => {
+    console.log("🚀 Redirecionando para checkout...");
+    navigateToCheckoutWithUTMs("https://pay.cakto.com.br/37iud5r_506380");
+  }, 3000); // Aumentei para 3 segundos
+}
 
   return (
     <div className="min-h-screen bg-white">
