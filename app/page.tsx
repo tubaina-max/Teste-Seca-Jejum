@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Flame, Users, Clock, Star } from "lucide-react"
-import Script from "next/script"
 import { useRouter } from "next/navigation"
 
 export default function LandingPage() {
@@ -21,30 +20,38 @@ export default function LandingPage() {
   // Função para preservar UTMs na navegação
   const navigateWithUTMs = (path: string) => {
     if (typeof window === "undefined") return
-
     const urlParams = new URLSearchParams(window.location.search)
     const utmParams = new URLSearchParams()
-    
+
     // Preservar todos os parâmetros UTM e outros parâmetros de tracking
     const trackingParams = [
-      'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
-      'gclid', 'fbclid', 'msclkid', 'ttclid', // IDs de clique
-      'ref', 'referrer', 'source', // Parâmetros de referência
-      'aid', 'cid', 'sid', // IDs de afiliado/campanha
+      "utm_source",
+      "utm_medium",
+      "utm_campaign",
+      "utm_term",
+      "utm_content",
+      "gclid",
+      "fbclid",
+      "msclkid",
+      "ttclid", // IDs de clique
+      "ref",
+      "referrer",
+      "source", // Parâmetros de referência
+      "aid",
+      "cid",
+      "sid", // IDs de afiliado/campanha
     ]
-    
-    trackingParams.forEach(param => {
+
+    trackingParams.forEach((param) => {
       const value = urlParams.get(param)
       if (value) {
         utmParams.set(param, value)
       }
     })
-    
+
     // Construir URL final
-    const finalUrl = utmParams.toString() 
-      ? `${path}?${utmParams.toString()}`
-      : path
-    
+    const finalUrl = utmParams.toString() ? `${path}?${utmParams.toString()}` : path
+
     router.push(finalUrl)
   }
 
@@ -56,7 +63,6 @@ export default function LandingPage() {
         page_path: "/",
       })
     }
-
     // Log UTMs para debug (remover em produção)
     if (typeof window !== "undefined" && window.location.search) {
       console.log("UTMs atuais:", window.location.search)
@@ -65,38 +71,6 @@ export default function LandingPage() {
 
   return (
     <>
-      {/* Pixel Script */}
-      <Script id="utmify-pixel-script" strategy="afterInteractive">
-        {`
-          window.pixelId = "688bd76d39249d6f834ff133";
-          var a = document.createElement("script");
-          a.setAttribute("async", "");
-          a.setAttribute("defer", "");
-          a.setAttribute("src", "https://cdn.utmify.com.br/scripts/pixel/pixel.js");
-          document.head.appendChild(a);
-        `}
-      </Script>
-
-      {/* UTMify Tracking Script */}
-      <Script
-        src="https://cdn.utmify.com.br/scripts/utms/latest.js"
-        data-utmify-prevent-xcod-sck
-        data-utmify-prevent-subids
-        async
-        defer
-      />
-
-      {/* Google Analytics */}
-      <Script async src="https://www.googletagmanager.com/gtag/js?id=G-GVND5XYZ4T" />
-      <Script id="google-analytics-config" strategy="afterInteractive">
-        {`
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){dataLayer.push(arguments);}
-          gtag('js', new Date());
-          gtag('config', 'G-GVND5XYZ4T');
-        `}
-      </Script>
-
       <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
         {/* Header */}
         <div className="bg-white shadow-sm border-b">
