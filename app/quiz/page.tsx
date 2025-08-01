@@ -1,62 +1,105 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
-import { ArrowLeft, Flame, Sparkles, TrendingUp, Heart, Brain } from "lucide-react"
-import type { QuizData, QuizOption } from "@/types/quiz"
+import { ArrowLeft, Flame, Sparkles, TrendingUp, Heart, Brain, AlertTriangle } from "lucide-react"
+import type { QuizAnswers, QuizOption } from "@/types/quiz" // Importe QuizStep também
 import { quizSteps } from "@/data/quiz-steps"
-import Script from "next/script"
-import { useRouter } from "next/navigation" // ✅ Adicionado
+import { useRouter } from "next/navigation"
+import { useDynamicSteps } from "@/hooks/useDynamicSteps" // Importe useDynamicSteps
+import { analyzeFitnessLevel, analyzePlan } from "@/utils/quizAnalysis" // Importe as funções de análise
 
 export default function QuizPage() {
   const [currentStep, setCurrentStep] = useState(0)
-  const [answers, setAnswers] = useState<QuizData>({})
+  const [answers, setAnswers] = useState<QuizAnswers>({})
   const [showInsight, setShowInsight] = useState(false)
   const [liveUsers, setLiveUsers] = useState(127)
   const [sliderValue, setSliderValue] = useState<number>(0)
   const [inputValue, setInputValue] = useState<string>("")
   const [selectedMultiple, setSelectedMultiple] = useState<string[]>([])
   const [showFinalLoading, setShowFinalLoading] = useState(false)
-  
-  const router = useRouter() // ✅ Adicionado
+  const [isLoadingBMI, setIsLoadingBMI] = useState(false) // Estado para simular carregamento do IMC
 
-  // ✅ Função para preservar UTMs na navegação
+  const router = useRouter()
+
+  // Gerar etapas dinâmicas baseadas nas respostas
+  const { step37, step39 } = useDynamicSteps(answers)
+
+  // Combinar etapas estáticas com dinâmicas
+  const allSteps = useMemo(() => {
+    const steps = [...quizSteps]
+    // Substituir etapa 37 (índice 36)
+    if (step37) {
+      steps[36] = step37
+    }
+    // Adicionar etapa 39 (plan-preview) como a penúltima etapa, antes da finalização
+    // Se a etapa 39 for a última etapa do quiz, ela deve ser adicionada aqui.
+    // Se a etapa 41 (creating-plan) for a última, a 39 deve vir antes dela.
+    // Pelo seu `quiz-steps.ts` anterior, a etapa 41 é a última estática.
+    // Então, a 39 deve ser inserida antes da 41.
+    // A etapa 41 tem índice 37 no array `quizSteps` original (0-indexed).
+    // Se a etapa 39 for inserida, ela se tornará o novo índice 37, e a 41 passará para 38.
+    steps.splice(37, 0, step39) // Insere step39 no índice 37, empurrando o restante
+    return steps
+  }, [step37, step39])
+
+  const currentQuizStep = allSteps[currentStep]
+
+  // Função para preservar UTMs na navegação
   const navigateWithUTMs = (path: string) => {
     if (typeof window === "undefined") return
-
     const currentParams = new URLSearchParams(window.location.search)
     const utmParams = new URLSearchParams()
-    
+
     // Preservar todos os parâmetros UTM e outros parâmetros de tracking
     const trackingParams = [
-      'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
-      'gclid', 'fbclid', 'msclkid', 'ttclid',
-      'ref', 'referrer', 'source', 'aid', 'cid', 'sid',
+      "utm_source",
+      "utm_medium",
+      "utm_campaign",
+      "utm_term",
+      "utm_content",
+      "gclid",
+      "fbclid",
+      "msclkid",
+      "ttclid",
+      "ref",
+      "referrer",
+      "source",
+      "aid",
+      "cid",
+      "sid",
     ]
-    
-    trackingParams.forEach(param => {
+
+    trackingParams.forEach((param) => {
       const value = currentParams.get(param)
       if (value) {
         utmParams.set(param, value)
       }
     })
-    
-    const finalUrl = utmParams.toString() 
-      ? `${path}?${utmParams.toString()}`
-      : path
-    
+
+    const finalUrl = utmParams.toString() ? `${path}?${utmParams.toString()}` : path
+
     router.push(finalUrl)
   }
 
   // Initialize slider value when step changes
   useEffect(() => {
-    const currentQuizStep = quizSteps[currentStep]
     if (currentQuizStep.type === "slider" && currentQuizStep.defaultValue) {
       setSliderValue(currentQuizStep.defaultValue)
     }
     if (currentQuizStep.type === "input") {
       setInputValue("")
+    }
+
+    // Handle BMI loading for fitness-summary step
+    if (currentQuizStep.id === "fitness-summary") {
+      setIsLoadingBMI(true)
+      setTimeout(() => {
+        setIsLoadingBMI(false)
+      }, 1500) // Simulate 1.5 seconds of loading for BMI diagnosis
+    } else {
+      setIsLoadingBMI(false) // Ensure it's false for other steps
     }
 
     // Google Analytics event for quiz step view
@@ -67,7 +110,7 @@ export default function QuizPage() {
         question: currentQuizStep.question,
       })
     }
-  }, [currentStep])
+  }, [currentStep, currentQuizStep])
 
   // Simulate live users counter
   useEffect(() => {
@@ -77,8 +120,7 @@ export default function QuizPage() {
     return () => clearInterval(interval)
   }, [])
 
-  const currentQuizStep = quizSteps[currentStep]
-  const progress = ((currentStep + 1) / quizSteps.length) * 100
+  const progress = ((currentStep + 1) / allSteps.length) * 100
 
   const handleAnswer = (questionId: string, answer: any) => {
     setAnswers((prev) => ({ ...prev, [questionId]: answer }))
@@ -115,17 +157,17 @@ export default function QuizPage() {
   }
 
   const nextStep = () => {
-    if (currentStep < quizSteps.length - 1) {
+    if (currentStep < allSteps.length - 1) {
       setCurrentStep((prev) => prev + 1)
       setSelectedMultiple([])
     } else {
-      // ✅ CORREÇÃO PRINCIPAL: Preservar UTMs na navegação final
+      // CORREÇÃO PRINCIPAL: Preservar UTMs na navegação final
       setShowFinalLoading(true)
       if (typeof window !== "undefined" && (window as any).gtag) {
         ;(window as any).gtag("event", "quiz_final_loading_started")
       }
       setTimeout(() => {
-        navigateWithUTMs("/results") // ✅ Usando função que preserva UTMs
+        navigateWithUTMs("/results") // Usando função que preserva UTMs
       }, 3000)
     }
   }
@@ -135,6 +177,72 @@ export default function QuizPage() {
       setCurrentStep((prev) => prev - 1)
     }
   }
+
+  // --- BMI Calculation for Fitness Summary (Etapa 37) ---
+  const { bmi, bmiCategory, bmiPosition } = useMemo(() => {
+    const heightCm = answers["height"] as number
+    const weightKg = answers["current-weight"] as number
+
+    if (!heightCm || !weightKg) {
+      return { bmi: 0, bmiCategory: "", bmiPosition: 0 }
+    }
+
+    const heightM = heightCm / 100
+    const calculatedBmi = weightKg / (heightM * heightM)
+
+    let category = ""
+    let position = 0 // 0 to 100 for slider position
+
+    // Define BMI categories and their approximate ranges for visual bar
+    const BMI_UNDERWEIGHT_THRESHOLD = 18.5
+    const BMI_NORMAL_THRESHOLD = 25
+    const BMI_OVERWEIGHT_THRESHOLD = 30 // For "Obeso" visual range
+
+    // Scale position across the 0-100 range of the bar
+    const minBmiForBar = 15
+    const maxBmiForBar = 40
+    const scaledBmi = Math.max(minBmiForBar, Math.min(maxBmiForBar, calculatedBmi))
+    position = ((scaledBmi - minBmiForBar) / (maxBmiForBar - minBmiForBar)) * 100
+
+    if (calculatedBmi < BMI_UNDERWEIGHT_THRESHOLD) {
+      category = "Abaixo do peso"
+    } else if (calculatedBmi >= BMI_UNDERWEIGHT_THRESHOLD && calculatedBmi < BMI_NORMAL_THRESHOLD) {
+      category = "Normal"
+    } else if (calculatedBmi >= BMI_NORMAL_THRESHOLD && calculatedBmi < BMI_OVERWEIGHT_THRESHOLD) {
+      category = "Sobrepeso"
+    } else {
+      category = "Obeso"
+    }
+    position = Math.min(100, Math.max(0, position)) // Clamp between 0 and 100
+
+    return { bmi: calculatedBmi, bmiCategory: category, bmiPosition: position }
+  }, [answers])
+
+  // --- Mappings for Fitness Summary (Etapa 37) ---
+  const lifestyleMap: { [key: string]: string } = {
+    "always-supported": "Busca mudanças",
+    "sometimes-supported": "Busca mudanças",
+    "not-supported": "Busca mudanças",
+  }
+
+  const exerciseMap: { [key: string]: string } = {
+    daily: "Exercício intenso",
+    "several-times": "Exercício moderado",
+    "3-4-times": "Exercício moderado",
+    "1-2-times": "Exercício leve",
+    monthly: "Exercício leve",
+    never: "Sedentário",
+  }
+
+  const activityMap: { [key: string]: string } = {
+    sedentary: "Sedentário",
+    mixed: "Intermediário",
+    standing: "Ativo",
+  }
+
+  // A análise do plano ainda é feita, mas a etapa 39 não será renderizada aqui
+  const planAnalysis = useMemo(() => analyzePlan(answers), [answers])
+  const fitnessAnalysis = useMemo(() => analyzeFitnessLevel(answers), [answers])
 
   if (showInsight && currentQuizStep.insight) {
     return (
@@ -176,7 +284,9 @@ export default function QuizPage() {
 
             <p className="text-lg font-semibold text-gray-700 mb-2">94%</p>
             <p className="text-gray-600 mb-6">Finalizando...</p>
-            <p className="text-sm text-gray-500">Analisando suas 39 respostas para criar seu protocolo único de jejum intermitente...</p>
+            <p className="text-sm text-gray-500">
+              Analisando suas {allSteps.length} respostas para criar seu protocolo único de jejum intermitente...
+            </p>
 
             <div className="mt-8 p-4 bg-green-50 rounded-lg">
               <p className="text-lg font-bold text-gray-800 mb-2">+15 mil mulheres</p>
@@ -190,38 +300,6 @@ export default function QuizPage() {
 
   return (
     <>
-      {/* Pixel Script */}
-      <Script id="utmify-pixel-script" strategy="afterInteractive">
-        {`
-          window.pixelId = "688bd76d39249d6f834ff133";
-          var a = document.createElement("script");
-          a.setAttribute("async", "");
-          a.setAttribute("defer", "");
-          a.setAttribute("src", "https://cdn.utmify.com.br/scripts/pixel/pixel.js");
-          document.head.appendChild(a);
-        `}
-      </Script>
-
-      {/* UTMify Tracking Script */}
-      <Script
-        src="https://cdn.utmify.com.br/scripts/utms/latest.js"
-        data-utmify-prevent-xcod-sck
-        data-utmify-prevent-subids
-        async
-        defer
-      />
-
-      {/* Google Analytics */}
-      <Script async src="https://www.googletagmanager.com/gtag/js?id=G-GVND5XYZ4T" />
-      <Script id="google-analytics-config" strategy="afterInteractive">
-        {`
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){dataLayer.push(arguments);}
-          gtag('js', new Date());
-          gtag('config', 'G-GVND5XYZ4T');
-        `}
-      </Script>
-
       <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50">
         {/* Header */}
         <div className="bg-white shadow-sm border-b">
@@ -248,7 +326,7 @@ export default function QuizPage() {
             </div>
             <div className="flex justify-between items-center mt-2">
               <span className="text-sm text-gray-600">
-                Etapa {currentStep + 1} de {quizSteps.length}
+                Etapa {currentStep + 1} de {allSteps.length}
               </span>
               <div className="flex items-center text-sm text-green-600">
                 <Sparkles className="w-4 h-4 mr-1" />
@@ -271,38 +349,124 @@ export default function QuizPage() {
               {currentQuizStep.question}
             </h2>
 
-            {/* Social Proof */}
-            {currentQuizStep.socialProof && (
-              <div className="bg-white rounded-lg p-4 shadow-sm border mb-6">
-                <div className="text-center">
-                  {currentQuizStep.socialProof.mainImage && (
-                    <img
-                      src={currentQuizStep.socialProof.mainImage || "/placeholder.svg"}
-                      alt="Prova social principal"
-                      className="w-full h-auto object-contain rounded-lg mb-3"
-                    />
-                  )}
-                  <p className="text-sm text-gray-700 italic mt-2">{currentQuizStep.socialProof.text}</p>
-                  {currentQuizStep.socialProof.secondaryImages &&
-                    currentQuizStep.socialProof.secondaryImages.map((imgSrc, idx) => (
-                      <div
-                        key={idx}
-                        className="relative w-full mt-4"
-                        style={{ paddingTop: "56.25%" }}
-                      >
-                        <img
-                          src={imgSrc || "/placeholder.svg"}
-                          alt={`Prova social secundária ${idx + 1}`}
-                          className="absolute inset-0 w-full h-full object-contain rounded-lg"
-                        />
-                      </div>
-                    ))}
+            {/* Social Proof (se não for uma etapa dinâmica com renderização customizada) */}
+            {currentQuizStep.socialProof && !currentQuizStep.isDynamic && (
+              <div className="bg-gray-50 rounded-lg p-6 mb-8">
+                <div className="flex flex-col md:flex-row items-center gap-4">
+                  <img
+                    src={currentQuizStep.socialProof.mainImage || "/placeholder.svg"}
+                    alt="Social proof"
+                    className="w-32 h-32 object-cover rounded-lg"
+                  />
+                  <div className="flex-1 text-center md:text-left">
+                    <p className="text-gray-700 italic">"{currentQuizStep.socialProof.text}"</p>
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* Render different question types */}
-            {currentQuizStep.type === "single-choice" && (
+            {/* Renderização customizada para Etapa 37 (Fitness Summary) */}
+            {currentQuizStep.id === "fitness-summary" && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">Índice de massa corporal (IMC)</h3>
+                <div className="relative w-full h-8 bg-gray-200 rounded-full overflow-hidden mb-4">
+                  <div className="absolute inset-y-0 left-0 w-1/3 bg-red-400"></div>
+                  <div className="absolute inset-y-0 left-1/3 w-1/3 bg-green-400"></div>
+                  <div className="absolute inset-y-0 left-2/3 w-1/3 bg-orange-400"></div>
+                  {isLoadingBMI ? (
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse text-gray-600 text-sm">
+                      Calculando...
+                    </div>
+                  ) : (
+                    <div
+                      className="absolute top-1/2 -translate-y-1/2 bg-white text-gray-800 text-xs font-bold px-2 py-1 rounded-full shadow-md whitespace-nowrap transition-all duration-1000 ease-out"
+                      style={{ left: `${bmiPosition}%`, transform: "translateX(-50%)" }}
+                    >
+                      Você está aqui
+                    </div>
+                  )}
+                  <div className="absolute bottom-0 left-0 w-full flex justify-between text-xs text-gray-600 px-2">
+                    <span>Anormal</span>
+                    <span>Normal</span>
+                    <span>Obeso</span>
+                  </div>
+                </div>
+
+                <Card className="p-4 bg-gray-50 border">
+                  <p className="font-semibold text-gray-800 mb-1">Estilo de vida:</p>
+                  <p className="text-sm text-gray-600">
+                    {lifestyleMap[answers["family-support"] as string] || "Não informado"}
+                  </p>
+                </Card>
+                <Card className="p-4 bg-gray-50 border">
+                  <p className="font-semibold text-gray-800 mb-1">Nível de Exercício:</p>
+                  <p className="text-sm text-gray-600">
+                    {exerciseMap[answers["exercise-frequency"] as string] || "Não informado"}
+                  </p>
+                </Card>
+                <Card className="p-4 bg-gray-50 border">
+                  <p className="font-semibold text-gray-800 mb-1">Nível de atividade:</p>
+                  <p className="text-sm text-gray-600">
+                    {activityMap[answers["daily-activity"] as string] || "Não informado"}
+                  </p>
+                </Card>
+
+                {/* Conditional warning message and image */}
+                {(bmiCategory === "Abaixo do peso" || bmiCategory === "Sobrepeso" || bmiCategory === "Obeso") && (
+                  <div className="text-center mt-8">
+                    <img
+                      src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/FireShot%20Capture%20107%20-%20SECA%20JEJUM%20-%20%5Bsecajejum.xquiz.io%5D-juVqIyEEKswb2Py5z7NxsvRANq6o65.png"
+                      alt="Sua situação é preocupante"
+                      className="w-full max-w-[300px] mx-auto rounded-lg shadow-lg object-cover mb-4"
+                    />
+                    <div className="bg-white rounded-lg p-4 shadow-sm border text-left">
+                      <div className="flex items-start mb-2">
+                        <AlertTriangle className="w-5 h-5 text-orange-500 mr-2 flex-shrink-0" />
+                        <h3 className="text-lg font-bold text-gray-800">Sua situação é preocupante!</h3>
+                      </div>
+                      <p className="text-gray-600 text-sm">
+                        Parabéns por dar o primeiro passo. Vamos criar um plano personalizado para acelerar o seu
+                        metabolismo, aumentar sua força e melhorar sua saúde.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Renderização customizada para Etapa 39 (Plan Preview) */}
+            {currentQuizStep.id === "plan-preview" && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 text-center">
+                  Seu Plano Personalizado: Jejum {planAnalysis.fastingType} para {planAnalysis.objective}
+                </h3>
+                <img
+                  src={planAnalysis.image || "/placeholder.svg"}
+                  alt="Preview do Plano"
+                  className="w-full rounded-lg shadow-lg object-cover mb-4"
+                />
+                <Card className="p-4 bg-gray-50 border">
+                  <p className="font-semibold text-gray-800 mb-1">Duração Estimada:</p>
+                  <p className="text-sm text-gray-600">{planAnalysis.timeline}</p>
+                </Card>
+                <Card className="p-4 bg-gray-50 border">
+                  <p className="font-semibold text-gray-800 mb-1">Principais Benefícios:</p>
+                  <ul className="list-disc list-inside text-sm text-gray-600">
+                    {planAnalysis.benefits.map((benefit, index) => (
+                      <li key={index}>{benefit}</li>
+                    ))}
+                  </ul>
+                </Card>
+                {currentQuizStep.insight && (
+                  <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6">
+                    <p className="text-blue-700 text-sm">💡 {currentQuizStep.insight}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Opções (para tipos de pergunta padrão) */}
+            {currentQuizStep.type === "single-choice" && !currentQuizStep.isDynamic && currentQuizStep.options && (
               <div className="space-y-3">
                 {currentQuizStep.options?.map((option, index) => (
                   <Card
@@ -331,7 +495,7 @@ export default function QuizPage() {
               </div>
             )}
 
-            {currentQuizStep.type === "multiple-choice" && (
+            {currentQuizStep.type === "multiple-choice" && currentQuizStep.options && (
               <div className="space-y-6">
                 {Object.entries(
                   currentQuizStep.options?.reduce(
@@ -455,14 +619,14 @@ export default function QuizPage() {
                 🎯 Sua análise está ficando mais precisa!
                 <br />
                 <span className="text-blue-100">
-                  Dados coletados: {currentStep + 1}/{quizSteps.length}
+                  Dados coletados: {currentStep + 1}/{allSteps.length}
                 </span>
               </p>
             </div>
           )}
 
           {/* Social proof testimonial */}
-          {currentStep === Math.floor(quizSteps.length / 2) && (
+          {currentStep === Math.floor(allSteps.length / 2) && (
             <div className="bg-white rounded-lg p-4 shadow-sm border mb-6">
               <div className="flex items-start space-x-3">
                 <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
